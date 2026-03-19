@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Te Hopu A Maui I A Te Ra</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:#0d0d1a;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    overflow:hidden;
+  }
+  canvas {
+    display:block;
+    image-rendering:pixelated;
+    border:2px solid #e94560;
+    box-shadow:0 0 30px rgba(233,69,96,0.4);
+    cursor:crosshair;
+  }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+
+<!-- Load Level modal — hidden until triggered from menu -->
+<div id="load-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:50;align-items:center;justify-content:center;display:none;">
+  <div style="background:#1a1a2e;border:2px solid #e94560;border-radius:6px;padding:28px 32px;width:540px;max-width:95vw;box-shadow:0 0 40px rgba(233,69,96,0.4);">
+    <h2 style="color:#e94560;font-family:monospace;letter-spacing:3px;font-size:0.9rem;margin-bottom:6px;text-transform:uppercase;">Load Level</h2>
+    <p style="color:#666;font-family:monospace;font-size:0.72rem;margin-bottom:14px;">Paste exported JSON from the level editor below, then click Load.</p>
+    <textarea id="load-json" placeholder='{ "name": "My Level", ... }' style="width:100%;height:180px;background:#0a0a14;border:1px solid #333;color:#aaffaa;padding:10px;font-family:monospace;font-size:0.68rem;border-radius:3px;resize:none;"></textarea>
+    <div id="load-error" style="color:#e94560;font-family:monospace;font-size:0.7rem;min-height:18px;margin-top:6px;"></div>
+    <div style="display:flex;gap:10px;margin-top:12px;">
+      <button id="btn-load-go"    style="flex:1;padding:10px;background:#e94560;border:none;color:#fff;font-family:monospace;font-size:0.82rem;cursor:pointer;border-radius:3px;letter-spacing:1px;">LOAD & PLAY</button>
+      <button id="btn-load-cancel" style="flex:0 0 90px;padding:10px;background:#222;border:1px solid #555;color:#aaa;font-family:monospace;font-size:0.82rem;cursor:pointer;border-radius:3px;">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// SPRITES — embedded base64
+// ============================================================
+const SPRITE_MAUI = new Image();
+SPRITE_MAUI.src = 'data:image/jpeg;base64,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';
+const SPRITE_HOOK = new Image();
+SPRITE_HOOK.src = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAA6AD8DASIAAhEBAxEB/8QAGQAAAwEBAQAAAAAAAAAAAAAAAAEDAgQI/8QAKBAAAQMDAwQBBQEAAAAAAAAAAQACEQMSIQQxUSJBYXETMlKBodHh/8QAFAEBAAAAAAAAAAAAAAAAAAAAAP/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/APGSEIQC1bEFxABTpsc54a0S47Bder0TNI809S+qypgwWQTzA4zgmNtuA4sJ2yMGfC6nVW1HuuBqOum1wDi47fUCDHgKDqQ+M1KRL2NgPJAEEzsJkjG6CSFQAONr8GMFTODBQCbcZI2SWwGkQXARzP8APSDdCwh19UMJBINpJkAkAcSQBM90qlWRba1ox0tGJAiTyf6U61YvAw1oAADWiAIAF0cmJn2ooNAk438Qq0XXV2lzqfUPjmrJDQRbP4BkcQp0gS6BAu6cuA38lUq06lGtY6wvYZBAuDhvPBEZ/KB6jpqPa9wqFrzlr5uPcz3EifSk91wnM+1etq3VNM3TClRDWulr20g15ydyPYxtgLmd2HCBstHU7PATa94BaDAJ/wASJuYBAkeN0MJDg4dsoESScqlNjC4XODW/cZP6CkjZBR7mWixz5cOvED157Z/SwJIInHfKU9kINTA6d+VlCEDaYMpnAIBwTssoQCEIQCEIQCEIQf/Z';
+// Sprite dims: Maui 77x152, Hook 63x58
+
+// ============================================================
+// CONFIG
+// ============================================================
+const CFG = {
+  W: 800, H: 450,
+  GRAVITY: 800,
+  JUMP_V: -520,
+  MOVE_SPEED: 200,
+  MAX_FALL: 700,
+  WORLD_W: 4200,
+  GROUND_Y: 380,
+  GROUND_H: 70,
+  PLAYER_W: 38, PLAYER_H: 52,  // collision box (slightly smaller than sprite)
+
+  HOOK_BASE_LEN: 260,
+  HOOK_SPEED: 900,
+  HOOK_PULL_SPEED: 380,
+  HOOK_COOLDOWN: 0.35,
+
+  BOSS_HP: 3,
+  BOSS_W: 64, BOSS_H: 48,
+  BOSS_SPEED: 140,
+
+  POWERUPS_NEEDED: 5,
+  BOSS_TRIGGER_X: 3600,   // player must reach this world-X to enter boss area
+  BOSS_ARENA_X: 3700,     // camera locks here — boss arena starts
+
+
+  DIAL_CX: 720, DIAL_CY: 390, DIAL_R: 50,
+  DPAD_CX: 80,  DPAD_CY: 390, DPAD_R: 56,
+};
+
+// ============================================================
+// CANVAS
+// ============================================================
+const canvas = document.getElementById('gameCanvas');
+const ctx    = canvas.getContext('2d');
+
+function resize() {
+  const maxW  = Math.min(window.innerWidth - 4, CFG.W);
+  const scale = maxW / CFG.W;
+  canvas.style.width  = maxW + 'px';
+  canvas.style.height = (CFG.H * scale) + 'px';
+  canvas.width  = CFG.W;
+  canvas.height = CFG.H;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ============================================================
+// MOUSE
+// ============================================================
+const mouse = { x: CFG.W/2, y: CFG.H/2, down: false };
+
+canvas.addEventListener('mousemove', e => {
+  const r = canvas.getBoundingClientRect();
+  mouse.x = (e.clientX - r.left) * (CFG.W / r.width);
+  mouse.y = (e.clientY - r.top)  * (CFG.H / r.height);
+});
+canvas.addEventListener('mousedown', e => {
+  if (e.button === 0) { mouse.down = true; fireHook(); }
+});
+canvas.addEventListener('mouseup', e => { if (e.button === 0) mouse.down = false; });
+
+// ============================================================
+// KEYBOARD
+// ============================================================
+const keys = { left: false, right: false, jump: false };
+let jumpConsumed = false;
+
+document.addEventListener('keydown', e => {
+  if (['a','A','ArrowLeft'].includes(e.key))  keys.left  = true;
+  if (['d','D','ArrowRight'].includes(e.key)) keys.right = true;
+  if (['w','W','ArrowUp',' '].includes(e.key) && !jumpConsumed) {
+    keys.jump = true; jumpConsumed = true;
+  }
+  if (e.key === 'Escape' && gamePhase === 'playing') {
+    gamePhase = 'menu'; menuHover = null; canvas.style.cursor = 'default';
+  }
+  e.preventDefault();
+}, { passive: false });
+
+document.addEventListener('keyup', e => {
+  if (['a','A','ArrowLeft'].includes(e.key))  keys.left  = false;
+  if (['d','D','ArrowRight'].includes(e.key)) keys.right = false;
+  if (['w','W','ArrowUp',' '].includes(e.key)) { keys.jump = false; jumpConsumed = false; }
+});
+
+// ============================================================
+// TOUCH
+// ============================================================
+const touch = {
+  dialActive: false, dialStartX: 0, dialStartY: 0,
+  dialCurX: 0, dialCurY: 0, dialTouchId: null,
+  dpadTouchId: null,
+  dpad: { left: false, right: false, up: false },
+};
+
+function canvasPos(t) {
+  const r = canvas.getBoundingClientRect();
+  return { x: (t.clientX - r.left)*(CFG.W/r.width), y: (t.clientY - r.top)*(CFG.H/r.height) };
+}
+function inCircle(px,py,cx,cy,r){ const dx=px-cx,dy=py-cy; return dx*dx+dy*dy < r*r; }
+
+function updateDpad(x, y) {
+  const dx = x - CFG.DPAD_CX, dy = y - CFG.DPAD_CY;
+  const dist = Math.sqrt(dx*dx+dy*dy);
+  const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+  if (dist < 14) { touch.dpad.left=touch.dpad.right=touch.dpad.up=false; return; }
+  touch.dpad.up    = angle < -45 && angle > -135;
+  touch.dpad.left  = angle > 135 || angle < -135;
+  touch.dpad.right = angle > -45 && angle < 45;
+}
+
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    const {x,y} = canvasPos(t);
+    if (inCircle(x,y,CFG.DPAD_CX,CFG.DPAD_CY,CFG.DPAD_R+14) && touch.dpadTouchId===null) {
+      touch.dpadTouchId = t.identifier;
+      updateDpad(x,y);
+      if (touch.dpad.up && !jumpConsumed) { keys.jump=true; jumpConsumed=true; }
+    }
+    if (inCircle(x,y,CFG.DIAL_CX,CFG.DIAL_CY,CFG.DIAL_R+24) && touch.dialTouchId===null) {
+      touch.dialTouchId = t.identifier;
+      touch.dialActive = true;
+      touch.dialStartX=x; touch.dialStartY=y;
+      touch.dialCurX=x;   touch.dialCurY=y;
+    }
+  }
+}, {passive:false});
+
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    const {x,y} = canvasPos(t);
+    if (t.identifier === touch.dpadTouchId) {
+      const wasUp = touch.dpad.up;
+      updateDpad(x,y);
+      if (touch.dpad.up && !wasUp && !jumpConsumed) { keys.jump=true; jumpConsumed=true; }
+      if (!touch.dpad.up) { keys.jump=false; jumpConsumed=false; }
+    }
+    if (t.identifier === touch.dialTouchId) { touch.dialCurX=x; touch.dialCurY=y; }
+  }
+}, {passive:false});
+
+canvas.addEventListener('touchend', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    if (t.identifier === touch.dpadTouchId) {
+      touch.dpadTouchId=null;
+      touch.dpad.left=touch.dpad.right=touch.dpad.up=false;
+      keys.jump=false; jumpConsumed=false;
+    }
+    if (t.identifier === touch.dialTouchId) {
+      const dx=touch.dialCurX-touch.dialStartX, dy=touch.dialCurY-touch.dialStartY;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+      if (dist > 14) fireHookDir(dx/dist, dy/dist);
+      touch.dialTouchId=null; touch.dialActive=false;
+    }
+  }
+}, {passive:false});
+
+function syncTouchKeys() {
+  // Only apply touch dpad to keys when a touch is actively on the dpad.
+  // If no touch is on the dpad, leave keyboard keys alone.
+  if (touch.dpadTouchId !== null) {
+    keys.left  = touch.dpad.left;
+    keys.right = touch.dpad.right;
+  }
+}
+
+// ============================================================
+// LEVELS ARRAY
+// To add a new level: export JSON from the level editor and
+// paste it as a new entry in this array.
+// ============================================================
+const LEVELS = [
+  // ── LEVEL 1 (hand-authored original) ──────────────────────
+  {
+    "name": "Level 1 — The Shore",
+    "gridW": 210, "gridH": 22, "cellSize": 20,
+    "skyRow": 2,
+    "terrain": [
+      { "x": 0,   "y": 19, "len": 210 }
+    ],
+    "grapples": [],
+    "platforms": [
+      { "x": 14, "y": 15, "len": 6 },
+      { "x": 23, "y": 12, "len": 5 },
+      { "x": 31, "y": 15, "len": 6 },
+      { "x": 41, "y": 11, "len": 5 },
+      { "x": 49, "y": 15, "len": 6 },
+      { "x": 58, "y": 13, "len": 4 },
+      { "x": 65, "y": 10, "len": 5 },
+      { "x": 74, "y": 14, "len": 6 },
+      { "x": 84, "y": 11, "len": 5 },
+      { "x": 92, "y": 15, "len": 6 },
+      { "x": 101,"y": 11, "len": 6 },
+      { "x": 110,"y": 13, "len": 5 },
+      { "x": 119,"y": 9,  "len": 4 },
+      { "x": 127,"y": 15, "len": 6 },
+      { "x": 137,"y": 12, "len": 5 },
+      { "x": 145,"y": 9,  "len": 6 },
+      { "x": 154,"y": 14, "len": 6 },
+      { "x": 164,"y": 11, "len": 5 },
+      { "x": 174,"y": 14, "len": 6 },
+      { "x": 184,"y": 12, "len": 5 },
+      { "x": 193,"y": 9,  "len": 4 },
+      { "x": 202,"y": 14, "len": 6 }
+    ],
+    "hazards": [],
+    "powerups": [
+      { "x": 15, "y": 14 }, { "x": 24, "y": 11 },
+      { "x": 42, "y": 10 }, { "x": 59, "y": 12 },
+      { "x": 76, "y": 10 }, { "x": 102,"y": 10 },
+      { "x": 120,"y": 8  }, { "x": 138,"y": 11 },
+      { "x": 185,"y": 11 }, { "x": 203,"y": 13 }
+    ],
+    "bossArena": {
+      "pinX": 190, "pinY": 12,
+      "x": 180, "y": 7, "w": 20, "h": 10
+    }
+  }
+
+  // ── PASTE NEW LEVELS BELOW THIS LINE ──────────────────────
+  // Export JSON from the level editor, then add a comma after
+  // the closing } above and paste the new level object here.
+  // Example:
+  // ,{ "name": "Level 2", ... }
+
+];
+
+// ── Active level index (change to load a different level) ──
+let CURRENT_LEVEL = 0;
+
+// ── Live level geometry (populated by loadLevel) ─────────────
+let PLATFORMS        = [];
+let POWERUPS_TEMPLATE = [];
+let HAZARDS          = [];
+let GRAPPLES         = [];
+let LEVEL_SKY_Y      = -1;   // world Y of sky ceiling (-1 = none)
+let LEVEL_WORLD_W    = 4200;
+let BG_HILLS         = [];
+let BG_CLOUDS        = [];
+
+// ── Level loader ─────────────────────────────────────────────
+// Converts editor JSON (grid coords × cellSize) → world pixels
+function loadLevel(idx) {
+  const lv = LEVELS[idx];
+  if (!lv) { console.error('Level not found:', idx); return; }
+  const CS = lv.cellSize || 20;   // pixels per grid square
+
+  LEVEL_WORLD_W = lv.gridW * CS;
+
+  // Sky barrier — world Y of the sky row centre
+  LEVEL_SKY_Y = lv.skyRow >= 0 ? lv.skyRow * CS : -1;
+
+  // Terrain runs → solid ground rects fed into getSolids()
+  // We store them as { x, y, w, h } world rects
+  const terrainRects = (lv.terrain || []).map(t => ({
+    x: t.x * CS,
+    y: t.y * CS,
+    w: t.len * CS,
+    h: CS,
+  }));
+
+  // Grapple columns → { x, y, h } world rects (vertical, hookable)
+  GRAPPLES = (lv.grapples || []).map(g => ({
+    x: g.x * CS,
+    y: g.y * CS,
+    w: CS * 0.2,   // thin collision column
+    h: CS,
+  }));
+
+  // Platforms → { x, y, w, h }
+  PLATFORMS = [
+    ...terrainRects,
+    ...(lv.platforms || []).map(p => ({
+      x: p.x * CS,
+      y: p.y * CS,
+      w: p.len * CS,
+      h: CS,
+    })),
+  ];
+
+  // Hazards → { x, y, w, h }
+  HAZARDS = (lv.hazards || []).map(h => ({
+    x: h.x * CS,
+    y: h.y * CS,
+    w: h.len * CS,
+    h: CS,
+  }));
+
+  // Power-ups → { x, y, w, h }  (1×1 grid cell, centred)
+  const PU_SIZE = 22;
+  POWERUPS_TEMPLATE = (lv.powerups || []).map(p => ({
+    x: p.x * CS + (CS - PU_SIZE) / 2,
+    y: p.y * CS + (CS - PU_SIZE) / 2,
+    w: PU_SIZE, h: PU_SIZE,
+  }));
+
+  // Boss trigger — use arena left edge X as trigger
+  if (lv.bossArena) {
+    CFG.BOSS_TRIGGER_X = lv.bossArena.x * CS;
+  } else {
+    CFG.BOSS_TRIGGER_X = LEVEL_WORLD_W - CFG.W;
+  }
+
+  // Update world width in CFG so camera clamp works
+  CFG.WORLD_W = LEVEL_WORLD_W;
+
+  // Auto-generate background hills & clouds from world width
+  BG_HILLS = [];
+  BG_CLOUDS = [];
+  const hillCols = ['#5a8a4a','#4a7a3a'];
+  for (let hx = 0; hx < LEVEL_WORLD_W; hx += 500) {
+    BG_HILLS.push({ x: hx, w: 280 + (hx % 3)*40, h: 70 + (hx % 5)*8, col: hillCols[(hx/500|0)%2] });
+  }
+  for (let cx = 80; cx < LEVEL_WORLD_W; cx += 420) {
+    BG_CLOUDS.push({ x: cx, y: 40 + (cx % 7)*5, w: 90 + (cx % 4)*12, h: 28 + (cx % 3)*5 });
+  }
+
+  console.log(`Level loaded: "${lv.name}" — ${PLATFORMS.length} solids, ${POWERUPS_TEMPLATE.length} powerups, world ${LEVEL_WORLD_W}px`);
+}
+
+// Load starting level immediately
+loadLevel(CURRENT_LEVEL);
+
+// ============================================================
+// STATE
+// ============================================================
+function freshState() {
+  return {
+    player: { x:60, y:300, w:CFG.PLAYER_W, h:CFG.PLAYER_H, vx:0, vy:0, onGround:false, facing:1, walkFrame:0, walkTimer:0 },
+    camera: { x:0 },
+    score: 0, lives: 3,
+    powerups: POWERUPS_TEMPLATE.map(p=>({...p,collected:false})),
+    hook: { state:'idle', wx:0, wy:0, dx:0, dy:0, cooldown:0, angle:0 },
+    boss: { active:false, hp:CFG.BOSS_HP, wx:400, wy:CFG.H*0.10, dir:1, hitTimer:0, dead:false, deathTimer:0 },
+    phase:'playing', phaseTimer:0,
+    bossUnlockAnim: 0,
+    bossAreaEntered: false,
+    arenaCamX: 0,
+  };
+}
+let state = freshState();
+
+// ============================================================
+// HOOK
+// ============================================================
+function hookMaxLen() {
+  const n = state.powerups.filter(p=>p.collected).length;
+  return CFG.HOOK_BASE_LEN * (1 + n * 0.1);
+}
+
+function fireHook() {
+  const p = state.player;
+  const pcx = (p.x + p.w/2) - state.camera.x;
+  const pcy =  p.y + p.h/2;
+  const dx = mouse.x - pcx, dy = mouse.y - pcy;
+  const len = Math.sqrt(dx*dx+dy*dy);
+  if (len < 1) return;
+  fireHookDir(dx/len, dy/len);
+}
+
+function fireHookDir(ndx, ndy) {
+  const h = state.hook;
+  if (h.cooldown > 0) return;
+  if (h.state !== 'idle') { retractHook(); return; }
+  const p = state.player;
+  h.wx = p.x + p.w/2; h.wy = p.y + p.h/2;
+  h.dx = ndx; h.dy = ndy;
+  h.angle = Math.atan2(ndy, ndx);
+  h.state = 'flying';
+  if (ndx > 0.1) p.facing = 1;
+  else if (ndx < -0.1) p.facing = -1;
+}
+
+function retractHook() {
+  const h = state.hook;
+  h.state = 'idle';
+  h.cooldown = CFG.HOOK_COOLDOWN;
+}
+
+// ============================================================
+// COLLISION
+// ============================================================
+function aabb(a,b){ return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y; }
+function getSolids(){ return PLATFORMS; }
+function getHazards(){ return HAZARDS; }
+
+function segVsRect(ax,ay,bx,by,r) {
+  const dx=bx-ax,dy=by-ay;
+  let tmin=0,tmax=1;
+  const iX=dx===0?Infinity:1/dx, iY=dy===0?Infinity:1/dy;
+  let t1=(r.x-ax)*iX, t2=(r.x+r.w-ax)*iX; if(t1>t2)[t1,t2]=[t2,t1];
+  tmin=Math.max(tmin,t1); tmax=Math.min(tmax,t2);
+  let t3=(r.y-ay)*iY, t4=(r.y+r.h-ay)*iY; if(t3>t4)[t3,t4]=[t4,t3];
+  tmin=Math.max(tmin,t3); tmax=Math.min(tmax,t4);
+  return tmax<tmin ? {hit:false} : {hit:true,t:tmin};
+}
+
+// ============================================================
+// UPDATE
+// ============================================================
+function updateHook(dt) {
+  const h=state.hook, p=state.player;
+  if (h.cooldown > 0) h.cooldown -= dt;
+  if (h.state === 'idle') return;
+
+  const pcx=p.x+p.w/2, pcy=p.y+p.h/2;
+  const maxLen=hookMaxLen();
+
+  if (h.state === 'flying') {
+    if (Math.sqrt((h.wx-pcx)**2+(h.wy-pcy)**2) >= maxLen) { retractHook(); return; }
+    const step=CFG.HOOK_SPEED*dt;
+    const nx=h.wx+h.dx*step, ny=h.wy+h.dy*step;
+    let hitT=1, hitSolid=null;
+    for (const s of getSolids()) {
+      const res=segVsRect(h.wx,h.wy,nx,ny,s);
+      if (res.hit && res.t<hitT) { hitT=res.t; hitSolid=s; }
+    }
+    if (hitSolid) {
+      h.wx=h.wx+h.dx*step*hitT; h.wy=h.wy+h.dy*step*hitT;
+      h.state='latched';
+    } else {
+      // Boss check
+      if (state.boss.active && !state.boss.dead) {
+        const br=bossRect();
+        if (segVsRect(h.wx,h.wy,nx,ny,br).hit) { hitBoss(); retractHook(); return; }
+      }
+      h.wx=nx; h.wy=ny;
+    }
+  }
+
+  if (h.state === 'latched') {
+    const dx=h.wx-pcx, dy=h.wy-pcy;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    if (dist < 8) { retractHook(); return; }
+    p.vx=(dx/dist)*CFG.HOOK_PULL_SPEED;
+    p.vy=(dy/dist)*CFG.HOOK_PULL_SPEED;
+    if (Math.sqrt((h.wx-pcx)**2+(h.wy-pcy)**2) > maxLen+20) retractHook();
+  }
+}
+
+function bossRect() { return {x:state.boss.wx,y:state.boss.wy,w:CFG.BOSS_W,h:CFG.BOSS_H}; }
+
+function hitBoss() {
+  const b=state.boss;
+  if (!b.active||b.dead) return;
+  b.hp--; b.hitTimer=0.4; state.score+=200;
+  if (b.hp<=0) { b.dead=true; b.deathTimer=2.5; state.score+=500; }
+}
+
+function updateBoss(dt) {
+  const b = state.boss;
+  const p = state.player;
+
+  // --- Trigger: player walks past the threshold ---
+  if (!state.bossAreaEntered && p.x >= CFG.BOSS_TRIGGER_X) {
+    state.bossAreaEntered = true;
+    state.arenaCamX = state.camera.x;   // freeze camera here
+    b.active = true;
+    state.bossUnlockAnim = 2.0;
+    // Position boss in centre of the locked arena view
+    b.wx = state.arenaCamX + CFG.W / 2 - CFG.BOSS_W / 2;
+    b.wy = CFG.H * 0.08;
+  }
+
+  if (!b.active) return;
+  if (state.bossUnlockAnim > 0) state.bossUnlockAnim -= dt;
+  if (b.hitTimer > 0) b.hitTimer -= dt;
+
+  if (b.dead) {
+    b.deathTimer -= dt;
+    if (b.deathTimer <= 0) { state.phase = 'bossWin'; state.phaseTimer = 3.5; }
+    return;
+  }
+
+  // Boss patrols within the locked arena screen bounds
+  const lb = state.arenaCamX + 20;
+  const rb = state.arenaCamX + CFG.W - CFG.BOSS_W - 20;
+  b.wx += b.dir * CFG.BOSS_SPEED * dt;
+  if (b.wx > rb) { b.wx = rb; b.dir = -1; }
+  if (b.wx < lb) { b.wx = lb; b.dir =  1; }
+  b.wy = CFG.H * 0.08 + Math.sin(Date.now() / 600) * (CFG.H * 0.04);
+}
+
+function updatePhysics(dt) {
+  const p=state.player, h=state.hook;
+  if (h.state !== 'latched') {
+    p.vx=0;
+    if (keys.left)  { p.vx=-CFG.MOVE_SPEED; p.facing=-1; }
+    if (keys.right) { p.vx= CFG.MOVE_SPEED; p.facing= 1; }
+    if (keys.jump && p.onGround) { p.vy=CFG.JUMP_V; p.onGround=false; keys.jump=false; }
+  } else {
+    if (keys.left)  p.vx-=80*dt;
+    if (keys.right) p.vx+=80*dt;
+  }
+  const gMult=h.state==='latched'?0.25:1;
+  p.vy+=CFG.GRAVITY*gMult*dt;
+  if (p.vy>CFG.MAX_FALL) p.vy=CFG.MAX_FALL;
+
+  p.x+=p.vx*dt; p.x=Math.max(0,Math.min(p.x,CFG.WORLD_W-p.w));
+  p.y+=p.vy*dt; p.onGround=false;
+
+  for (const s of getSolids()) {
+    if (!aabb(p,s)) continue;
+    const ox=Math.min(p.x+p.w,s.x+s.w)-Math.max(p.x,s.x);
+    const oy=Math.min(p.y+p.h,s.y+s.h)-Math.max(p.y,s.y);
+    if (oy<ox) {
+      if (p.vy>=0) { p.y=s.y-p.h; p.vy=0; p.onGround=true; if(h.state==='latched')retractHook(); }
+      else         { p.y=s.y+s.h; p.vy=0; }
+    } else {
+      if (p.vx>0) p.x=s.x-p.w; else p.x=s.x+s.w;
+    }
+  }
+
+  // Sky ceiling clamp
+  if (LEVEL_SKY_Y >= 0 && p.y < LEVEL_SKY_Y) {
+    p.y = LEVEL_SKY_Y;
+    if (p.vy < 0) p.vy = 0;
+  }
+
+  // Hazard collision — instant death
+  for (const hz of getHazards()) {
+    if (aabb(p, hz)) {
+      p.x=60; p.y=300; p.vx=0; p.vy=0;
+      state.lives = Math.max(0, state.lives-1);
+      state.camera.x=0; retractHook();
+      if (state.lives===0) { state.phase='dead'; state.phaseTimer=3; }
+      return;
+    }
+  }
+
+  // Walk animation
+  if (p.onGround && Math.abs(p.vx)>10) {
+    p.walkTimer+=dt;
+    if (p.walkTimer>0.15) { p.walkTimer=0; p.walkFrame=(p.walkFrame+1)%2; }
+  } else if (p.onGround) { p.walkFrame=0; p.walkTimer=0; }
+
+  if (p.y>CFG.H+80) {
+    p.x=60; p.y=300; p.vx=0; p.vy=0;
+    state.lives=Math.max(0,state.lives-1);
+    state.camera.x=0; retractHook();
+    if (state.lives===0) { state.phase='dead'; state.phaseTimer=3; }
+  }
+}
+
+function updateCamera() {
+  const p = state.player;
+  if (state.bossAreaEntered) {
+    // Camera is locked to the arena — do not scroll further
+    state.camera.x = state.arenaCamX;
+    return;
+  }
+  const target = p.x - CFG.W * 0.35;
+  state.camera.x = Math.max(0, Math.min(target, CFG.WORLD_W - CFG.W));
+}
+
+function updatePowerups() {
+  const p=state.player;
+  for (const pu of state.powerups) {
+    if (pu.collected) continue;
+    if (aabb(p,pu)) { pu.collected=true; state.score+=100; }
+  }
+}
+
+// ============================================================
+// DRAWING
+// ============================================================
+function drawCloud(cx,cy,cw,ch) {
+  ctx.beginPath(); ctx.ellipse(cx+cw/2,cy+ch/2,cw/2,ch/2,0,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx+cw*0.3,cy+ch*0.4,cw*0.32,ch*0.55,0,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx+cw*0.72,cy+ch*0.44,cw*0.28,ch*0.5,0,0,Math.PI*2); ctx.fill();
+}
+
+// Returns the visual ground Y — the top of the lowest terrain rect in the level
+function groundY() {
+  if (!PLATFORMS.length) return CFG.H - 70;
+  return Math.max(...PLATFORMS.map(p => p.y));
+}
+
+function drawBackground(cam) {
+  const grad=ctx.createLinearGradient(0,0,0,CFG.H);
+  grad.addColorStop(0,'#4a9fd4'); grad.addColorStop(0.7,'#b8dff0'); grad.addColorStop(1,'#cce8a0');
+  ctx.fillStyle=grad; ctx.fillRect(0,0,CFG.W,CFG.H);
+  ctx.fillStyle='rgba(255,255,255,0.82)';
+  for (const c of BG_CLOUDS) drawCloud(c.x-cam*0.18,c.y,c.w,c.h);
+  for (const h of BG_HILLS) {
+    ctx.fillStyle=h.col; ctx.beginPath();
+    ctx.ellipse(h.x-cam*0.45+h.w/2,groundY(),h.w/2,h.h,0,0,Math.PI*2); ctx.fill();
+  }
+}
+
+function drawGround(cam) {
+  ctx.fillStyle='#7a5810'; ctx.fillRect(0,groundY(),CFG.W,20);
+  ctx.fillStyle='#3d6b20'; ctx.fillRect(0,groundY(),CFG.W,9);
+}
+
+function drawPlatforms(cam) {
+  for (const pl of PLATFORMS) {
+    const sx=pl.x-cam;
+    if (sx+pl.w<0||sx>CFG.W) continue;
+    ctx.fillStyle='#7a4e2c'; ctx.fillRect(Math.round(sx),pl.y,pl.w,pl.h);
+    ctx.fillStyle='#4a7a28'; ctx.fillRect(Math.round(sx),pl.y,pl.w,5);
+    ctx.fillStyle='rgba(0,0,0,0.2)'; ctx.fillRect(Math.round(sx),pl.y+pl.h-4,pl.w,4);
+  }
+}
+
+function drawPowerups(cam) {
+  const t=Date.now()/420;
+  for (const pu of state.powerups) {
+    if (pu.collected) continue;
+    const sx=pu.x-cam;
+    if (sx+pu.w<0||sx>CFG.W) continue;
+    const bob=Math.sin(t+pu.x*0.009)*3;
+    const cx=Math.round(sx+pu.w/2), cy=Math.round(pu.y+pu.h/2+bob);
+    const or=pu.w/2, ir=or*0.42;
+    ctx.shadowColor='#FFD700'; ctx.shadowBlur=14;
+    ctx.fillStyle='#FFD700';
+    ctx.beginPath();
+    for (let i=0;i<10;i++) {
+      const ang=(Math.PI/5)*i-Math.PI/2;
+      const r=i%2===0?or:ir;
+      i===0?ctx.moveTo(cx+Math.cos(ang)*r,cy+Math.sin(ang)*r):ctx.lineTo(cx+Math.cos(ang)*r,cy+Math.sin(ang)*r);
+    }
+    ctx.closePath(); ctx.fill();
+    ctx.shadowBlur=0; ctx.shadowColor='transparent';
+  }
+}
+
+function drawHook(cam) {
+  const h=state.hook;
+  if (h.state==='idle') return;
+  const p=state.player;
+  const pcx=p.x+p.w/2-cam, pcy=p.y+p.h/2;
+  const hsx=h.wx-cam, hsy=h.wy;
+
+  // Chain rope
+  ctx.setLineDash([6,4]);
+  ctx.strokeStyle='#c8a060'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(pcx,pcy); ctx.lineTo(hsx,hsy); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Draw hook sprite rotated to travel angle
+  if (h.state==='flying'||h.state==='latched') {
+    ctx.save();
+    ctx.translate(hsx, hsy);
+    ctx.rotate(h.angle + Math.PI/4); // offset so hook tip points in direction
+    // Hook sprite: 63x58, draw centred
+    const hw=32, hh=30;
+    ctx.drawImage(SPRITE_HOOK, -hw/2, -hh/2, hw, hh);
+    ctx.restore();
+
+    // Anchor cross when latched
+    if (h.state==='latched') {
+      ctx.strokeStyle='#00ffaa'; ctx.lineWidth=2;
+      ctx.shadowColor='#00ffaa'; ctx.shadowBlur=8;
+      ctx.beginPath(); ctx.moveTo(hsx-8,hsy); ctx.lineTo(hsx+8,hsy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(hsx,hsy-8); ctx.lineTo(hsx,hsy+8); ctx.stroke();
+      ctx.shadowBlur=0; ctx.shadowColor='transparent';
+    }
+  }
+}
+
+function drawPlayer(cam) {
+  const p=state.player;
+  const sx=Math.round(p.x-cam);
+  const sy=Math.round(p.y);
+
+  // Ground shadow
+  ctx.fillStyle='rgba(0,0,0,0.18)';
+  ctx.beginPath(); ctx.ellipse(sx+p.w/2,groundY()+4,p.w*0.6,5,0,0,Math.PI*2); ctx.fill();
+
+  // Walk bob
+  const bob = p.onGround && Math.abs(p.vx)>10 ? (p.walkFrame===0?-1:1) : 0;
+  const drawY = sy + bob;
+
+  // Sprite: 77x152 source → draw proportionally scaled to fit player box + a bit taller
+  const drawW = p.w + 10;   // slightly wider than hitbox for nicer look
+  const drawH = p.h + 20;   // taller — character has head above hitbox
+  const drawX = sx - 5;     // centre over hitbox
+
+  if (p.facing === 1) {
+    // Draw normally
+    ctx.drawImage(SPRITE_MAUI, drawX, drawY - 20, drawW, drawH);
+  } else {
+    // Flip horizontally
+    ctx.save();
+    ctx.scale(-1, 1);
+    ctx.drawImage(SPRITE_MAUI, -(drawX + drawW), drawY - 20, drawW, drawH);
+    ctx.restore();
+  }
+}
+
+function drawBoss(cam) {
+  const b=state.boss;
+  if (!b.active) return;
+  const bx=b.wx-cam, by=b.wy;
+
+  if (b.dead) {
+    const prog=1-b.deathTimer/2.5;
+    for (let i=0;i<4;i++) {
+      const r=(prog*90)*(1+i*0.35);
+      const alpha=Math.max(0,1-prog*1.4);
+      ctx.strokeStyle=`rgba(255,${80+i*50},0,${alpha})`;
+      ctx.lineWidth=3+i;
+      ctx.beginPath(); ctx.arc(bx+CFG.BOSS_W/2,by+CFG.BOSS_H/2,r,0,Math.PI*2); ctx.stroke();
+    }
+    ctx.fillStyle=`rgba(255,200,0,${Math.max(0,1-prog*2)})`;
+    ctx.font='bold 22px monospace'; ctx.textAlign='center';
+    ctx.fillText('DEFEATED!',bx+CFG.BOSS_W/2,by-20); ctx.textAlign='left';
+    return;
+  }
+
+  const flash=b.hitTimer>0&&Math.floor(b.hitTimer*14)%2===0;
+
+  // Glow
+  ctx.shadowColor=flash?'#ffffff':'#ff4400'; ctx.shadowBlur=flash?24:10;
+
+  // Body
+  ctx.fillStyle=flash?'#ffffff':'#cc2200';
+  ctx.fillRect(Math.round(bx+12),by+10,CFG.BOSS_W-24,CFG.BOSS_H-16);
+
+  // Wings flap
+  const wf=Math.sin(Date.now()/140)*9;
+  ctx.fillStyle=flash?'#ffaaaa':'#8B0000';
+  ctx.beginPath(); ctx.moveTo(bx+12,by+20); ctx.lineTo(bx-22,by+4+wf); ctx.lineTo(bx-8,by+32); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(bx+CFG.BOSS_W-12,by+20); ctx.lineTo(bx+CFG.BOSS_W+22,by+4+wf); ctx.lineTo(bx+CFG.BOSS_W+8,by+32); ctx.closePath(); ctx.fill();
+
+  // Eyes
+  ctx.shadowBlur=0; ctx.shadowColor='transparent';
+  ctx.fillStyle='#ffff00';
+  ctx.beginPath(); ctx.arc(bx+22,by+17,5,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(bx+CFG.BOSS_W-22,by+17,5,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#000';
+  ctx.beginPath(); ctx.arc(bx+23,by+17,2.5,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(bx+CFG.BOSS_W-21,by+17,2.5,0,Math.PI*2); ctx.fill();
+
+  // HP bar above boss
+  const barW=80, barH=8, barX=bx+CFG.BOSS_W/2-barW/2, barY=by-18;
+  ctx.fillStyle='#333'; ctx.fillRect(barX,barY,barW,barH);
+  ctx.fillStyle='#ff3300'; ctx.fillRect(barX,barY,(b.hp/CFG.BOSS_HP)*barW,barH);
+  ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.strokeRect(barX,barY,barW,barH);
+
+  // Boss unlock warning flash
+  if (state.bossUnlockAnim > 0) {
+    const alpha = Math.min(1, state.bossUnlockAnim) * 0.55 * (Math.sin(Date.now() / 70) * 0.5 + 0.5);
+    ctx.fillStyle = `rgba(200,0,0,${alpha})`;
+    ctx.fillRect(0, 0, CFG.W, CFG.H);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 22px monospace'; ctx.textAlign = 'center';
+    ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 20;
+    ctx.fillText('⚠  BOSS AREA  ⚠', CFG.W / 2, CFG.H * 0.14);
+    ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+    ctx.textAlign = 'left';
+  }
+}
+
+function drawHazards(cam) {
+  for (const hz of HAZARDS) {
+    const sx = hz.x - cam;
+    if (sx + hz.w < 0 || sx > CFG.W) continue;
+    // Red fill
+    ctx.fillStyle = 'rgba(200,30,0,0.55)';
+    ctx.fillRect(Math.round(sx), hz.y, hz.w, hz.h);
+    // Spike row along top
+    ctx.fillStyle = '#ff3300';
+    const sw = 12;
+    for (let i = 0; i < hz.w; i += sw) {
+      ctx.beginPath();
+      ctx.moveTo(Math.round(sx + i),          hz.y + hz.h);
+      ctx.lineTo(Math.round(sx + i + sw/2),   hz.y);
+      ctx.lineTo(Math.round(sx + i + sw),     hz.y + hz.h);
+      ctx.fill();
+    }
+  }
+}
+
+function drawBossGate(cam) {
+  if (state.bossAreaEntered) return;   // gate dissolved when entered
+  const gx = CFG.BOSS_TRIGGER_X - cam;
+  if (gx < -60 || gx > CFG.W + 60) return;
+
+  const t = Date.now() / 500;
+  const pulse = Math.sin(t) * 0.3 + 0.7;
+
+  // Two pillars
+  const pillarW = 18, pillarH = groundY() - 60;
+  ctx.fillStyle = '#550000';
+  ctx.fillRect(Math.round(gx - pillarW), 60, pillarW, pillarH);
+  ctx.fillRect(Math.round(gx + 2),       60, pillarW, pillarH);
+
+  // Pillar caps
+  ctx.fillStyle = '#aa2200';
+  ctx.fillRect(Math.round(gx - pillarW - 4), 56, pillarW + 8, 10);
+  ctx.fillRect(Math.round(gx - 2),           56, pillarW + 8, 10);
+
+  // Energy barrier between pillars
+  const barW = pillarW + 4;
+  const barAlpha = pulse * 0.7;
+  ctx.fillStyle = `rgba(255,40,40,${barAlpha})`;
+  ctx.fillRect(Math.round(gx - pillarW + 1), 66, barW, pillarH - 6);
+
+  // Scanlines on barrier
+  ctx.strokeStyle = `rgba(255,120,120,${pulse * 0.5})`;
+  ctx.lineWidth = 1;
+  for (let ly = 70; ly < groundY(); ly += 8) {
+    ctx.beginPath();
+    ctx.moveTo(Math.round(gx - pillarW + 1), ly);
+    ctx.lineTo(Math.round(gx - pillarW + 1 + barW), ly);
+    ctx.stroke();
+  }
+
+  // "BOSS" label above
+  ctx.shadowColor = '#ff2200'; ctx.shadowBlur = 12;
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 13px monospace'; ctx.textAlign = 'center';
+  ctx.fillText('BOSS', Math.round(gx), 50);
+  ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+  ctx.textAlign = 'left';
+
+  // Proximity warning — screen edge tint when close
+  const dist = CFG.BOSS_TRIGGER_X - state.player.x;
+  if (dist < 500 && dist > 0) {
+    const proximity = 1 - dist / 500;
+    ctx.fillStyle = `rgba(180,0,0,${proximity * 0.18})`;
+    ctx.fillRect(0, 0, CFG.W, CFG.H);
+  }
+}
+
+function drawHUD() {
+  const collected=state.powerups.filter(p=>p.collected).length;
+  const needed=CFG.POWERUPS_NEEDED;
+  const hookLen=Math.round(hookMaxLen());
+
+  // Left HUD
+  ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(8,8,175,68);
+  ctx.fillStyle='#fff'; ctx.font='bold 13px monospace';
+  ctx.fillText(`SCORE: ${state.score}`,16,24);
+  ctx.fillText(`LIVES: ${'♥'.repeat(state.lives)}`,16,40);
+  ctx.fillStyle='#FFD700';
+  ctx.fillText(`HOOK: ${hookLen}px`,16,56);
+  ctx.fillStyle='#666'; ctx.font='9px monospace';
+  ctx.fillText(LEVELS[CURRENT_LEVEL]?.name ?? '',16,68);
+
+  // Right HUD — star count + distance to boss gate
+  ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(CFG.W-180,8,172,52);
+  ctx.fillStyle='#FFD700'; ctx.font='bold 12px monospace';
+  ctx.fillText(`★ ${collected} / ${needed} powerups`,CFG.W-172,22);
+  // Star pips
+  for (let i=0;i<needed;i++) {
+    ctx.fillStyle=i<collected?'#FFD700':'#444';
+    ctx.beginPath(); ctx.arc(CFG.W-172+i*20+8,36,6,0,Math.PI*2); ctx.fill();
+  }
+  // Distance to boss
+  if (!state.bossAreaEntered) {
+    const dist = Math.max(0, Math.round(CFG.BOSS_TRIGGER_X - state.player.x));
+    ctx.fillStyle = dist < 400 ? '#ff6644' : '#aaa';
+    ctx.font = '11px monospace';
+    ctx.fillText(dist > 0 ? `BOSS: ${dist}px away` : 'ENTERING BOSS AREA', CFG.W-172, 52);
+  } else {
+    ctx.fillStyle = '#ff4444'; ctx.font = 'bold 11px monospace';
+    ctx.fillText('BOSS ARENA', CFG.W-172, 52);
+  }
+
+  // Boss HP label if active
+  if (state.boss.active && !state.boss.dead) {
+    ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(CFG.W/2-80,8,160,24);
+    ctx.fillStyle='#ff4444'; ctx.font='bold 13px monospace'; ctx.textAlign='center';
+    ctx.fillText(`BOSS HP: ${'◆'.repeat(state.boss.hp)}${'◇'.repeat(CFG.BOSS_HP-state.boss.hp)}`,CFG.W/2,24);
+    ctx.textAlign='left';
+  }
+
+  // Hook length power indicator
+  if (collected > 0 && collected < needed) {
+    ctx.fillStyle='rgba(0,255,150,0.15)';
+    ctx.strokeStyle='#00ff96'; ctx.lineWidth=1;
+    // Show current hook range as arc
+  }
+}
+
+function drawDPad() {
+  const cx=CFG.DPAD_CX, cy=CFG.DPAD_CY, r=CFG.DPAD_R;
+  // Outer ring
+  ctx.globalAlpha=0.45;
+  ctx.fillStyle='#223'; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#e94560'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();
+  ctx.globalAlpha=1;
+
+  // Arrows: left, up, right embedded in circle
+  const arrows=[
+    { label:'◀', ax:cx-r*0.6, ay:cy,      active:touch.dpad.left  },
+    { label:'▲', ax:cx,       ay:cy-r*0.6, active:touch.dpad.up   },
+    { label:'▶', ax:cx+r*0.6, ay:cy,       active:touch.dpad.right },
+  ];
+  for (const a of arrows) {
+    ctx.globalAlpha=a.active?1.0:0.55;
+    ctx.fillStyle=a.active?'#e94560':'#fff';
+    ctx.font=`bold ${r*0.42}px monospace`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(a.label, a.ax, a.ay);
+  }
+  ctx.textBaseline='alphabetic'; ctx.textAlign='left'; ctx.globalAlpha=1;
+}
+
+function drawDial() {
+  const cx=CFG.DIAL_CX, cy=CFG.DIAL_CY, r=CFG.DIAL_R;
+
+  // Outer ring
+  ctx.globalAlpha=0.45;
+  ctx.fillStyle='#223'; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#e94560'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();
+  ctx.globalAlpha=1;
+
+  // Hook icon in centre
+  ctx.save(); ctx.translate(cx,cy);
+  const dialAngle=touch.dialActive?Math.atan2(touch.dialCurY-touch.dialStartY,touch.dialCurX-touch.dialStartX):(-Math.PI/4);
+  ctx.rotate(dialAngle);
+  const ih=20,iw=22;
+  ctx.drawImage(SPRITE_HOOK,-iw/2,-ih/2,iw,ih);
+  ctx.restore();
+
+  // Direction indicator line when dragging
+  if (touch.dialActive) {
+    const dx=touch.dialCurX-touch.dialStartX, dy=touch.dialCurY-touch.dialStartY;
+    const dist=Math.min(Math.sqrt(dx*dx+dy*dy),r*0.85);
+    const ang=Math.atan2(dy,dx);
+    ctx.strokeStyle='rgba(255,220,0,0.7)'; ctx.lineWidth=2;
+    ctx.setLineDash([4,3]);
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.lineTo(cx+Math.cos(ang)*dist, cy+Math.sin(ang)*dist);
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  // Label
+  ctx.globalAlpha=0.6; ctx.fillStyle='#fff'; ctx.font='9px monospace';
+  ctx.textAlign='center'; ctx.fillText('FIRE',cx,cy+r+13); ctx.textAlign='left'; ctx.globalAlpha=1;
+}
+
+function drawPhaseScreen() {
+  if (state.phase==='bossWin') {
+    ctx.fillStyle='rgba(0,0,0,0.65)'; ctx.fillRect(0,0,CFG.W,CFG.H);
+    ctx.fillStyle='#FFD700'; ctx.font='bold 48px monospace'; ctx.textAlign='center';
+    ctx.fillText('STAGE CLEAR!',CFG.W/2,CFG.H/2-24);
+    ctx.fillStyle='#fff'; ctx.font='22px monospace';
+    ctx.fillText(`Score: ${state.score}`,CFG.W/2,CFG.H/2+18);
+    const hasNext = CURRENT_LEVEL + 1 < LEVELS.length && LEVELS[CURRENT_LEVEL+1];
+    ctx.fillText(hasNext ? 'Next level loading...' : 'All levels complete!',CFG.W/2,CFG.H/2+50);
+    ctx.textAlign='left';
+
+  } else if (state.phase==='allClear') {
+    ctx.fillStyle='rgba(0,0,0,0.78)'; ctx.fillRect(0,0,CFG.W,CFG.H);
+    // Animated gold shimmer
+    const t = Date.now()/600;
+    ctx.shadowColor='#ffd700'; ctx.shadowBlur=30+Math.sin(t)*12;
+    ctx.fillStyle='#FFD700'; ctx.font='bold 44px monospace'; ctx.textAlign='center';
+    ctx.fillText('YOU HAVE CAUGHT',CFG.W/2,CFG.H/2-52);
+    ctx.fillText('THE SUN! 🌞',CFG.W/2,CFG.H/2);
+    ctx.shadowBlur=0;
+    ctx.fillStyle='#fff'; ctx.font='20px monospace';
+    ctx.fillText(`Final Score: ${state.score}`,CFG.W/2,CFG.H/2+42);
+    ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.font='13px monospace';
+    ctx.fillText('Returning to menu...',CFG.W/2,CFG.H/2+74);
+    ctx.textAlign='left';
+
+  } else if (state.phase==='dead') {
+    ctx.fillStyle='rgba(0,0,0,0.75)'; ctx.fillRect(0,0,CFG.W,CFG.H);
+    ctx.fillStyle='#e94560'; ctx.font='bold 48px monospace'; ctx.textAlign='center';
+    ctx.fillText('GAME OVER',CFG.W/2,CFG.H/2-24);
+    ctx.fillStyle='#fff'; ctx.font='22px monospace';
+    ctx.fillText(`Score: ${state.score}`,CFG.W/2,CFG.H/2+18);
+    ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.font='13px monospace';
+    ctx.fillText('Returning to menu...',CFG.W/2,CFG.H/2+50);
+    ctx.textAlign='left';
+  }
+}
+
+// ============================================================
+// MENU
+// ============================================================
+let gamePhase = 'menu';   // 'menu' | 'playing'
+
+// Menu button rects (canvas coords) — computed in drawMenu
+const MENU_BTNS = {
+  start: { x:0, y:0, w:0, h:0 },
+  load:  { x:0, y:0, w:0, h:0 },
+};
+let menuHover = null;  // 'start' | 'load' | null
+
+function startGame(levelIdx) {
+  CURRENT_LEVEL = levelIdx;
+  loadLevel(CURRENT_LEVEL);
+  state = freshState();
+  gamePhase = 'playing';
+  canvas.style.cursor = 'crosshair';
+}
+
+function drawMenu() {
+  const W = CFG.W, H = CFG.H;
+  ctx.save();
+
+  // ── Animated sky background ──
+  const t = Date.now() / 1000;
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#0a0a20');
+  grad.addColorStop(0.6, '#1a2a4a');
+  grad.addColorStop(1, '#2a1a0a');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Parallax stars
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  for (let i = 0; i < 60; i++) {
+    const sx = ((i * 137 + t * 8) % W);
+    const sy = (i * 73) % (H * 0.65);
+    const sz = 0.5 + (i % 3) * 0.5;
+    ctx.beginPath();
+    ctx.arc(sx, sy, sz, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Animated ocean waves at bottom
+  ctx.fillStyle = '#1a3a5a';
+  ctx.fillRect(0, H - 70, W, 70);
+  ctx.fillStyle = '#1e4a6e';
+  for (let wx = -50; wx < W + 50; wx += 80) {
+    const woff = Math.sin(t * 1.2 + wx * 0.03) * 8;
+    ctx.beginPath();
+    ctx.ellipse(wx + (t * 30) % 80, H - 65 + woff, 50, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Ground strip
+  ctx.fillStyle = '#c8a060';
+  ctx.fillRect(0, H - 72, W, 12);
+  ctx.fillStyle = '#3d6b20';
+  ctx.fillRect(0, H - 72, W, 5);
+
+  // ── Sun (animated) ──
+  const sunX = W * 0.78, sunY = H * 0.22;
+  const sunR  = 38 + Math.sin(t * 0.8) * 3;
+  // Rays
+  ctx.strokeStyle = 'rgba(255,220,80,0.35)';
+  ctx.lineWidth = 2;
+  for (let ri = 0; ri < 12; ri++) {
+    const ang = (ri / 12) * Math.PI * 2 + t * 0.3;
+    ctx.beginPath();
+    ctx.moveTo(sunX + Math.cos(ang) * (sunR + 4), sunY + Math.sin(ang) * (sunR + 4));
+    ctx.lineTo(sunX + Math.cos(ang) * (sunR + 18), sunY + Math.sin(ang) * (sunR + 18));
+    ctx.stroke();
+  }
+  // Sun disc
+  const sunGrad = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, sunR);
+  sunGrad.addColorStop(0, '#fff8c0');
+  sunGrad.addColorStop(0.5, '#ffd700');
+  sunGrad.addColorStop(1, '#ff8c00');
+  ctx.fillStyle = sunGrad;
+  ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 30;
+  ctx.beginPath(); ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2); ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // ── Maui sprite (large, left side) ──
+  if (SPRITE_MAUI.complete) {
+    const mh = 160, mw = mh * (77 / 152);
+    const mx = W * 0.08, my = H - 70 - mh;
+    // Slight bob
+    const bob = Math.sin(t * 1.5) * 3;
+    ctx.drawImage(SPRITE_MAUI, mx, my + bob, mw, mh);
+  }
+
+  // ── Title text ──
+  ctx.textAlign = 'center';
+
+  // Shadow glow
+  ctx.shadowColor = '#ff8800'; ctx.shadowBlur = 24;
+  ctx.fillStyle = '#ffd700';
+  ctx.font = 'bold 28px monospace';
+  ctx.fillText('TE HOPU A MAUI', W / 2 + 40, H * 0.28);
+  ctx.font = 'bold 22px monospace';
+  ctx.fillText('I A TE RA', W / 2 + 40, H * 0.28 + 34);
+  ctx.shadowBlur = 0;
+
+  // Subtitle
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.font = '11px monospace';
+  ctx.fillText('Maui\'s Catching of the Sun', W / 2 + 40, H * 0.28 + 56);
+
+  // ── Menu buttons ──
+  const btnW = 200, btnH = 44, btnX = W / 2 + 40 - btnW / 2;
+  const btn1Y = H * 0.52;
+  const btn2Y = H * 0.52 + btnH + 16;
+
+  MENU_BTNS.start = { x: btnX, y: btn1Y, w: btnW, h: btnH };
+  MENU_BTNS.load  = { x: btnX, y: btn2Y, w: btnW, h: btnH };
+
+  drawMenuBtn(btnX, btn1Y, btnW, btnH, '▶  START GAME', menuHover === 'start', '#e94560');
+  drawMenuBtn(btnX, btn2Y, btnW, btnH, '⬆  LOAD LEVEL', menuHover === 'load',  '#4a9fd4');
+
+  // Level 1 label under start
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.font = '10px monospace';
+  ctx.fillText('Level 1 — The Shore', W / 2 + 40, btn1Y + btnH + 12);
+
+  // Controls hint at bottom
+  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  ctx.font = '10px monospace';
+  ctx.fillText('WASD + MOUSE1  |  TOUCH D-PAD + DIAL', W / 2, H - 14);
+
+  ctx.textAlign = 'left';
+  ctx.restore();
+}
+
+function drawMenuBtn(x, y, w, h, label, hovered, col) {
+  const r = 6;
+  ctx.save();
+  // Shadow
+  ctx.shadowColor = col; ctx.shadowBlur = hovered ? 18 : 6;
+  // Fill
+  ctx.fillStyle = hovered ? col : 'rgba(20,20,40,0.85)';
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, r);
+  ctx.fill();
+  // Border
+  ctx.strokeStyle = col; ctx.lineWidth = hovered ? 2.5 : 1.5;
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.stroke();
+  ctx.shadowBlur = 0;
+  // Label
+  ctx.fillStyle = hovered ? '#fff' : col;
+  ctx.font = `bold 14px monospace`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(label, x + w / 2, y + h / 2);
+  ctx.restore();
+}
+
+// ── Menu mouse interaction ──
+canvas.addEventListener('mousemove', e => {
+  if (gamePhase !== 'menu') return;
+  const r = canvas.getBoundingClientRect();
+  const mx = (e.clientX - r.left) * (CFG.W / r.width);
+  const my = (e.clientY - r.top)  * (CFG.H / r.height);
+  const prev = menuHover;
+  menuHover = null;
+  for (const [k, btn] of Object.entries(MENU_BTNS)) {
+    if (mx >= btn.x && mx <= btn.x + btn.w && my >= btn.y && my <= btn.y + btn.h) {
+      menuHover = k; break;
+    }
+  }
+  if (menuHover !== prev) canvas.style.cursor = menuHover ? 'pointer' : 'default';
+}, { capture: true });
+
+canvas.addEventListener('click', e => {
+  if (gamePhase !== 'menu') return;
+  const r = canvas.getBoundingClientRect();
+  const mx = (e.clientX - r.left) * (CFG.W / r.width);
+  const my = (e.clientY - r.top)  * (CFG.H / r.height);
+  const s = MENU_BTNS.start, l = MENU_BTNS.load;
+  if (mx >= s.x && mx <= s.x+s.w && my >= s.y && my <= s.y+s.h) {
+    startGame(0);
+  } else if (mx >= l.x && mx <= l.x+l.w && my >= l.y && my <= l.y+l.h) {
+    openLoadModal();
+  }
+});
+
+// Touch on menu buttons
+canvas.addEventListener('touchend', e => {
+  if (gamePhase !== 'menu') return;
+  e.preventDefault();
+  const t0 = e.changedTouches[0];
+  const r = canvas.getBoundingClientRect();
+  const tx = (t0.clientX - r.left) * (CFG.W / r.width);
+  const ty = (t0.clientY - r.top)  * (CFG.H / r.height);
+  const s = MENU_BTNS.start, l = MENU_BTNS.load;
+  if (tx >= s.x && tx <= s.x+s.w && ty >= s.y && ty <= s.y+s.h) startGame(0);
+  else if (tx >= l.x && tx <= l.x+l.w && ty >= l.y && ty <= l.y+l.h) openLoadModal();
+}, { capture: true });
+
+// ── Load Level modal ──
+function openLoadModal() {
+  document.getElementById('load-error').textContent = '';
+  document.getElementById('load-json').value = '';
+  const ov = document.getElementById('load-overlay');
+  ov.style.display = 'flex';
+}
+
+document.getElementById('btn-load-cancel').addEventListener('click', () => {
+  document.getElementById('load-overlay').style.display = 'none';
+});
+
+document.getElementById('btn-load-go').addEventListener('click', () => {
+  const raw = document.getElementById('load-json').value.trim();
+  const errEl = document.getElementById('load-error');
+  errEl.textContent = '';
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch(e) {
+    errEl.textContent = '✖ Invalid JSON — check for missing commas or brackets.';
+    return;
+  }
+  if (!parsed.platforms && !parsed.terrain) {
+    errEl.textContent = '✖ This doesn\'t look like a valid level — missing terrain/platforms.';
+    return;
+  }
+  // Inject as a custom level at index 99 so it doesn't overwrite the built-in levels
+  LEVELS[99] = parsed;
+  document.getElementById('load-overlay').style.display = 'none';
+  startGame(99);
+});
+
+// ============================================================
+// MAIN LOOP
+// ============================================================
+let lastTime=null;
+
+function loop(ts) {
+  if (!lastTime) lastTime=ts;
+  const dt=Math.min((ts-lastTime)/1000,0.05);
+  lastTime=ts;
+
+  // ── MENU ──
+  if (gamePhase === 'menu') {
+    drawMenu();
+    requestAnimationFrame(loop);
+    return;
+  }
+
+  // ── PLAYING ──
+  syncTouchKeys();
+
+  if (state.phase==='playing') {
+    updatePhysics(dt);
+    updateHook(dt);
+    updateCamera();
+    updatePowerups();
+    updateBoss(dt);
+  } else {
+    state.phaseTimer -= dt;
+    if (state.phaseTimer <= 0) {
+      if (state.phase === 'bossWin') {
+        const nextIdx = CURRENT_LEVEL + 1;
+        if (nextIdx < LEVELS.length && LEVELS[nextIdx]) {
+          // Advance to next level
+          CURRENT_LEVEL = nextIdx;
+          loadLevel(CURRENT_LEVEL);
+          state = freshState();
+        } else {
+          // No more levels — show completion screen then menu
+          state.phase = 'allClear';
+          state.phaseTimer = 4.0;
+        }
+      } else if (state.phase === 'allClear' || state.phase === 'dead') {
+        // Return to menu after screen has shown
+        gamePhase = 'menu';
+        menuHover = null;
+        canvas.style.cursor = 'default';
+      } else {
+        state = freshState();
+      }
+    }
+  }
+
+  const cam=state.camera.x;
+  drawBackground(cam);
+  drawGround(cam);
+  drawPlatforms(cam);
+  drawPowerups(cam);
+  drawHazards(cam);
+  drawBossGate(cam);
+  drawHook(cam);
+  drawPlayer(cam);
+  drawBoss(cam);
+  drawHUD();
+  drawDPad();
+  drawDial();
+  drawPhaseScreen();
+
+  requestAnimationFrame(loop);
+}
+
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
