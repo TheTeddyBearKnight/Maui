@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Te Hopu A Maui I A Te Ra — v4</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:#0d0d1a;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    overflow:hidden;
+  }
+  /* Fullscreen — body fills screen, canvas centred with letterbox */
+  :fullscreen body,
+  :-webkit-full-screen body,
+  :-moz-full-screen body {
+    width:100vw; height:100vh;
+    background:#000;
+  }
+  :fullscreen,
+  :-webkit-full-screen,
+  :-moz-full-screen {
+    background:#000;
+  }
+  canvas {
+    display:block;
+    image-rendering:pixelated;
+    border:2px solid #e94560;
+    box-shadow:0 0 30px rgba(233,69,96,0.4);
+    cursor:crosshair;
+  }
+  /* Hide border in fullscreen for clean look */
+  :fullscreen canvas,
+  :-webkit-full-screen canvas,
+  :-moz-full-screen canvas {
+    border:none;
+    box-shadow:none;
+  }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+
+<!-- Load Level modal — hidden until triggered from menu -->
+<div id="load-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:50;align-items:center;justify-content:center;display:none;">
+  <div style="background:#1a1a2e;border:2px solid #e94560;border-radius:6px;padding:28px 32px;width:540px;max-width:95vw;box-shadow:0 0 40px rgba(233,69,96,0.4);">
+    <h2 style="color:#e94560;font-family:monospace;letter-spacing:3px;font-size:0.9rem;margin-bottom:6px;text-transform:uppercase;">Load Level</h2>
+    <p style="color:#666;font-family:monospace;font-size:0.72rem;margin-bottom:14px;">Paste exported JSON from the level editor below, then click Load.</p>
+    <textarea id="load-json" placeholder='{ "name": "My Level", ... }' style="width:100%;height:180px;background:#0a0a14;border:1px solid #333;color:#aaffaa;padding:10px;font-family:monospace;font-size:0.68rem;border-radius:3px;resize:none;"></textarea>
+    <div id="load-error" style="color:#e94560;font-family:monospace;font-size:0.7rem;min-height:18px;margin-top:6px;"></div>
+    <div style="display:flex;gap:10px;margin-top:12px;">
+      <button id="btn-load-go"    style="flex:1;padding:10px;background:#e94560;border:none;color:#fff;font-family:monospace;font-size:0.82rem;cursor:pointer;border-radius:3px;letter-spacing:1px;">LOAD & PLAY</button>
+      <button id="btn-load-cancel" style="flex:0 0 90px;padding:10px;background:#222;border:1px solid #555;color:#aaa;font-family:monospace;font-size:0.82rem;cursor:pointer;border-radius:3px;">CANCEL</button>
+    </div>
+  </div>
+</div>
+<script src="game.min.js"></script>
+</body>
+</html>
